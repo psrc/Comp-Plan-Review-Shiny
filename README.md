@@ -52,12 +52,12 @@ The app will open in your default web browser.
 ## How it Works
 
 - The UI creates a button using `actionButton()`
-- The server logic uses `renderText()` to display "Hello, World!" when the button is clicked
+- The server logic uses `renderText()` to display data from a db query when the button is clicked
 - The text appears above the button as requested
 - When clicked, the app also connects to the Elmer database and retrieves a record from `[chas].[tenure_dim]`
 - Database results are displayed below the button in a formatted text box
 - Uses DBI and odbc packages for SQL Server connectivity with Windows Authentication
-- The button counter (`input$hello_button`) starts at 0 and increments each time it's clicked
+- The button counter (`input$jurisdiction_btn`) starts at 0 and increments each time it's clicked
 
 ## Database Module
 
