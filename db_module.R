@@ -29,7 +29,7 @@ get_cities_counties <- function() {
   }
 
   tryCatch({
-    query <- "SELECT [ID], [DisplayName] FROM dbo.vwCityCounty"
+    query <- "SELECT [ID], [DisplayName], [JurisdictionType] FROM dbo.vwCityCounty"
     result <- dbGetQuery(con, query)
     dbDisconnect(con)
     if (nrow(result) > 0) {

@@ -1,7 +1,7 @@
 # ui.R - User interface definition
 
 fluidPage(
-  titlePanel("Hello World Shiny App"),
+  titlePanel("Plan Review Tracking"),
   
   mainPanel(
     # Output text that will appear when button is clicked
@@ -9,10 +9,14 @@ fluidPage(
     br(),
     
     # Button to trigger the hello world message and database query
-    actionButton("hello_button", "Click me!", class = "btn-primary"),
+    actionButton("jurisdiction_button", "Jurisdictions", class = "btn-primary"),
     br(), br(),
     
-    # Output area for database results in table format
-    tableOutput("db_results")
+    # Output area for database results in table format with scrollable container
+    # Displays approximately 12 rows with vertical scrollbar
+    div(
+      style = "height: 500px; width: 250px; overflow-y: auto; border: 1px solid #ddd;",
+      tableOutput("db_results")
+    )
   )
 )
