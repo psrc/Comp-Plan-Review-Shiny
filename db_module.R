@@ -21,6 +21,30 @@ get_db_connection <- function() {
   })
 }
 
+get_centers <- function() {
+  con <- get_db_connection()
+
+  if (is.null(con)) {
+    return(data.frame(Error = "Database connection failed. Please check your connection settings."))
+  }
+
+  tryCatch({
+    query <- "SELECT [ID], [DisplayName], [JurisdictionType] FROM dbo.vwCenterCPP"
+    result <- dbGetQuery(con, query)
+    dbDisconnect(con)
+    if (nrow(result) > 0) {
+      return(result)
+    } else {
+      return(data.frame(Message = "No records found in [vwCenterCPP]"))
+    }
+
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(Error = paste("Query failed in get_centers():", e$message)))
+  })
+}
+
+
 get_cities_counties <- function() {
   con <- get_db_connection()
 
@@ -35,14 +59,13 @@ get_cities_counties <- function() {
     if (nrow(result) > 0) {
       return(result)
     } else {
-      return(data.frame(Message = "No records found in [tenure_dim]"))
+      return(data.frame(Message = "No records found in [vwCenterCPP]"))
     }
 
   }, error = function(e) {
     dbDisconnect(con)
     return(data.frame(Error = paste("Query failed in get_cities_counties():", e$message)))
   })
-
 }
 
 # Function to get data from tenure_dim table

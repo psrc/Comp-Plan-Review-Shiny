@@ -2,6 +2,7 @@
 
 # Load required libraries
 library(shiny)
+library(shinyjs)
 library(DBI)
 library(odbc)
 
