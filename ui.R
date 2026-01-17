@@ -1,28 +1,29 @@
 # ui.R - User interface definition
 
-page_fluid(
+navbarPage(
   title = "Plan Review Tracking",
-  shinyjs::useShinyjs(),
   
-  # Page heading
-  h2("Plan Review Tracking"),
-  
-  # Output text that will appear when button is clicked
-  h3(textOutput("jurisdiction_txt")),
-  br(),
-  
-  # Buttons to trigger the database queries
-  div(
-    style = "display: inline-block;",
-    actionButton("jurisdiction_btn", "Jurisdictions", class = "btn-primary"),
-    actionButton("centers_btn", "Centers and CPPs", class = "btn-primary")
+  # Custom CSS for active tab styling
+  header = tags$head(
+    tags$style(HTML("
+      .navbar-default .navbar-nav > .active > a,
+      .navbar-default .navbar-nav > .active > a:hover,
+      .navbar-default .navbar-nav > .active > a:focus {
+        background-color: #D2A679 !important;
+        color: #333333 !important;
+      }
+    "))
   ),
-  br(), br(),
   
-  # Output area for database results in table format with scrollable container
-  # Displays approximately 12 rows with vertical scrollbar
-  div(
-    style = "height: 500px; width: 250px; overflow-y: auto; border: 1px solid #ddd;",
-    tableOutput("db_results")
+  # Organizations tab - uses module UI
+  tabPanel(
+    "Organizations",
+    organizationsUI("organizations")
+  ),
+  
+  # Materials tab - uses module UI
+  tabPanel(
+    "Materials",
+    materialsUI("materials")
   )
 )
