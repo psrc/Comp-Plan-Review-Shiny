@@ -4,6 +4,7 @@
 library(shiny)
 library(shinyjs)
 library(bslib)
+library(DT)
 library(DBI)
 library(odbc)
 

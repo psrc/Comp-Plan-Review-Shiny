@@ -22,11 +22,16 @@ organizationsUI <- function(id) {
     ),
     br(), br(),
     
-    # Output area for database results in table format with scrollable container
-    # Displays approximately 12 rows with vertical scrollbar
-    div(
-      style = "height: 500px; width: 250px; overflow-y: auto; border: 1px solid #ddd;",
-      tableOutput(ns("db_results"))
+    fluidRow(
+      column(6,
+        div(
+          style = "height: 500px; overflow-y: auto;",
+          DT::DTOutput(ns("db_results"))
+        )
+      ),
+      column(6,
+        uiOutput(ns("selected_detail"))
+      )
     )
   )
 }
@@ -42,26 +47,26 @@ organizationsServer <- function(id) {
     # Store the current data reactively
     current_data <- reactiveVal(data.frame())
     
+    table_proxy <- DT::dataTableProxy("db_results", session = session)
+
     # Observe Jurisdictions button click
     observeEvent(input$jurisdiction_btn, {
       active_source("jurisdictions")
       current_data(get_cities_counties())
-      
-      # Update button styles - Jurisdictions is primary, Centers is default
-      # Use shinyjs to update button classes
+      DT::selectRows(table_proxy, NULL)
+
       shinyjs::removeClass(ns("jurisdiction_btn"), "btn-default")
       shinyjs::addClass(ns("jurisdiction_btn"), "btn-primary")
       shinyjs::removeClass(ns("centers_btn"), "btn-primary")
       shinyjs::addClass(ns("centers_btn"), "btn-default")
     })
-    
+
     # Observe Centers and CPPs button click
     observeEvent(input$centers_btn, {
       active_source("centers")
       current_data(get_centers())
-      
-      # Update button styles - Centers is primary, Jurisdictions is default
-      # Use shinyjs to update button classes
+      DT::selectRows(table_proxy, NULL)
+
       shinyjs::removeClass(ns("centers_btn"), "btn-default")
       shinyjs::addClass(ns("centers_btn"), "btn-primary")
       shinyjs::removeClass(ns("jurisdiction_btn"), "btn-primary")
@@ -80,15 +85,35 @@ organizationsServer <- function(id) {
       }
     })
     
-    # Create reactive output for database results as table
-    # Display only DisplayName column
-    output$db_results <- renderTable({
+    output$db_results <- DT::renderDT({
       data <- current_data()
       if (nrow(data) > 0 && "DisplayName" %in% names(data)) {
-        data.frame(DisplayName = data$DisplayName)
+        DT::datatable(
+          data.frame(DisplayName = data$DisplayName),
+          selection = "single",
+          rownames = FALSE,
+          options = list(
+            dom = "t",
+            paging = FALSE,
+            autoWidth = TRUE,
+            #columnDefs = list(list(width = "400px", targets = 0))
+          )
+        )
       } else {
-        data.frame()
+        DT::datatable(data.frame(DisplayName = character(0)),
+          rownames = FALSE, options = list(dom = "t"))
       }
+    })
+
+    output$selected_detail <- renderUI({
+      idx <- input$db_results_rows_selected
+      if (is.null(idx) || length(idx) == 0) return(NULL)
+      row <- current_data()[idx, ]
+      tagList(
+        h4(row$DisplayName),
+        p(strong("ID: "), row$ID),
+        p(strong("Type: "), row$JurisdictionType)
+      )
     })
   })
 }
