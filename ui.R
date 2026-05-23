@@ -1,7 +1,7 @@
 # ui.R - User interface definition
 
 navbarPage(
-  title = "Plan Review Tracking",
+  title = "Plan Review Tracking!",
   
   # Custom CSS for active tab styling
   header = tags$head(
