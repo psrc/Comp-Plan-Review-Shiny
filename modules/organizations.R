@@ -88,6 +88,21 @@ organizationsServer <- function(id) {
       }
     })
 
+    output$materials_table <- DT::renderDT({
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      data <- get_materials(as.integer(id_val))
+      cols <- c("MaterialDateReceived", "MaterialTitle", "Status", "Staff_Reviewer", "ID")
+      data <- data[, intersect(cols, names(data)), drop = FALSE]
+      if ("MaterialDateReceived" %in% names(data)) {
+        data$MaterialDateReceived <- format(as.Date(data$MaterialDateReceived), "%Y-%m-%d")
+      }
+      names(data)[names(data) == "MaterialDateReceived"] <- "Received"
+      names(data)[names(data) == "MaterialTitle"]        <- "Title"
+      names(data)[names(data) == "Staff_Reviewer"]       <- "Staff Reviewer"
+      data
+    }, rownames = FALSE)
+
     output$selected_detail <- renderUI({
       id_val <- input$org_select
       if (is.null(id_val) || id_val == "") return(NULL)
@@ -97,7 +112,14 @@ organizationsServer <- function(id) {
       tagList(
         h4(row$DisplayName),
         p(strong("ID: "), row$ID),
-        p(strong("Type: "), row$JurisdictionType)
+        p(strong("Type: "), row$JurisdictionType),
+        tabsetPanel(
+          tabPanel("Materials", DT::DTOutput(ns("materials_table"))),
+          tabPanel("Contacts"),
+          tabPanel("Actions"),
+          tabPanel("Correspondence"),
+          tabPanel("Notes")
+        )
       )
     })
   })

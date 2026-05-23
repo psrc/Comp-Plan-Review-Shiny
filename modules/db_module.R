@@ -68,7 +68,22 @@ get_cities_counties <- function() {
   })
 }
 
-# Function to get data from tenure_dim table
+get_materials <- function(org_id) {
+  con <- get_db_connection()
+  if (is.null(con)) {
+    return(data.frame(Error = "Database connection failed. Please check your connection settings."))
+  }
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT * FROM dbo.vwMaterials WHERE JurisdictionID = ?",
+      params = list(as.integer(org_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(Error = paste("Query failed in get_materials():", e$message)))
+  })
+}
 
 # Function to test database connection
 test_db_connection <- function() {
