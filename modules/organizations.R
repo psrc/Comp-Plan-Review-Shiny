@@ -88,10 +88,18 @@ organizationsServer <- function(id) {
       }
     })
 
-    output$materials_table <- DT::renderDT({
+    materials_refresh <- reactiveVal(0)
+    materials_proxy   <- DT::dataTableProxy("materials_table", session = session)
+
+    materials_data <- reactive({
+      materials_refresh()
       id_val <- input$org_select
       req(id_val, id_val != "")
-      data <- get_materials(as.integer(id_val))
+      get_materials(as.integer(id_val))
+    })
+
+    output$materials_table <- DT::renderDT({
+      data <- materials_data()
       cols <- c("MaterialDateReceived", "MaterialTitle", "Status", "Staff_Reviewer", "ID")
       data <- data[, intersect(cols, names(data)), drop = FALSE]
       if ("MaterialDateReceived" %in% names(data)) {
@@ -100,8 +108,58 @@ organizationsServer <- function(id) {
       names(data)[names(data) == "MaterialDateReceived"] <- "Received"
       names(data)[names(data) == "MaterialTitle"]        <- "Title"
       names(data)[names(data) == "Staff_Reviewer"]       <- "Staff Reviewer"
-      data
-    }, rownames = FALSE)
+      DT::datatable(data, selection = "single", rownames = FALSE,
+                    options = list(dom = "t", paging = FALSE))
+    })
+
+    output$material_edit_form <- renderUI({
+      idx <- input$materials_table_rows_selected
+      if (is.null(idx) || length(idx) == 0) return(NULL)
+
+      data        <- materials_data()
+      material_id <- data$ID[idx]
+      title       <- data$MaterialTitle[idx]
+      fk_ids      <- get_material_fk_ids(material_id)
+      status_opts <- get_status_lookup()
+      staff_opts  <- get_staff_lookup()
+
+      if (is.null(fk_ids) || nrow(fk_ids) == 0) return(NULL)
+
+      wellPanel(
+        strong(paste("Edit:", title)),
+        br(), br(),
+        fluidRow(
+          column(4,
+            selectInput(ns("edit_status"), "Status",
+                        choices  = setNames(status_opts$ID, status_opts$Status),
+                        selected = fk_ids$MaterialStatus)
+          ),
+          column(4,
+            selectInput(ns("edit_staff"), "Staff Reviewer",
+                        choices  = setNames(staff_opts$ID, staff_opts$Staff),
+                        selected = fk_ids$MaterialStaffReviewer)
+          ),
+          column(4,
+            br(),
+            actionButton(ns("save_material_btn"),   "Save",   class = "btn-success"),
+            actionButton(ns("cancel_material_btn"), "Cancel")
+          )
+        )
+      )
+    })
+
+    observeEvent(input$save_material_btn, {
+      idx <- input$materials_table_rows_selected
+      req(idx)
+      material_id <- materials_data()$ID[idx]
+      update_material(material_id, input$edit_status, input$edit_staff)
+      materials_refresh(materials_refresh() + 1)
+      DT::selectRows(materials_proxy, NULL)
+    })
+
+    observeEvent(input$cancel_material_btn, {
+      DT::selectRows(materials_proxy, NULL)
+    })
 
     output$selected_detail <- renderUI({
       id_val <- input$org_select
@@ -114,7 +172,10 @@ organizationsServer <- function(id) {
         p(strong("ID: "), row$ID),
         p(strong("Type: "), row$JurisdictionType),
         tabsetPanel(
-          tabPanel("Materials", DT::DTOutput(ns("materials_table"))),
+          tabPanel("Materials",
+            DT::DTOutput(ns("materials_table")),
+            uiOutput(ns("material_edit_form"))
+          ),
           tabPanel("Contacts"),
           tabPanel("Actions"),
           tabPanel("Correspondence"),

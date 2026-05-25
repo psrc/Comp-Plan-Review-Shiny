@@ -85,6 +85,63 @@ get_materials <- function(org_id) {
   })
 }
 
+get_status_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), Status = character()))
+  tryCatch({
+    result <- dbGetQuery(con, "SELECT ID, [Status] FROM dbo.MaterialsStatus")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), Status = character()))
+  })
+}
+
+get_staff_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), Staff = character()))
+  tryCatch({
+    result <- dbGetQuery(con, "SELECT ID, Staff FROM dbo.Staff")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), Staff = character()))
+  })
+}
+
+get_material_fk_ids <- function(material_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(NULL)
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT MaterialStatus, MaterialStaffReviewer FROM dbo.Materials WHERE ID = ?",
+      params = list(as.integer(material_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(NULL)
+  })
+}
+
+update_material <- function(material_id, status_id, staff_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "UPDATE dbo.Materials SET MaterialStatus = ?, MaterialStaffReviewer = ? WHERE ID = ?",
+      params = list(as.integer(status_id), as.integer(staff_id), as.integer(material_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Update failed in update_material():", e$message))
+    return(FALSE)
+  })
+}
+
 # Function to test database connection
 test_db_connection <- function() {
   con <- get_db_connection()
