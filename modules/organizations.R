@@ -161,6 +161,96 @@ organizationsServer <- function(id) {
       DT::selectRows(materials_proxy, NULL)
     })
 
+    contacts_trigger   <- reactiveVal(0)
+    contacts_edit_mode <- reactiveVal(FALSE)
+
+    observeEvent(input$org_select, {
+      contacts_edit_mode(FALSE)
+    }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+    contacts_data <- reactive({
+      contacts_trigger()
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      get_jurisdiction_contacts(as.integer(id_val))
+    })
+
+    output$contacts_panel <- renderUI({
+      c <- contacts_data()
+      if (is.null(c) || nrow(c) == 0) return(NULL)
+      c[is.na(c)] <- ""
+      staff_opts <- get_staff_lookup()
+
+      tagList(
+        p(strong("Address:"), c$Address),
+        br(),
+        fluidRow(
+          column(6,
+            p(strong("Name:"),             c$ContactName1),
+            p(strong("Title:"),            c$ContactTitle1),
+            p(strong("Phone:"),            c$ContactPhone1),
+            p(strong("Email:"),            c$ContactEmail1),
+            p(strong("Staff Assignment:"), c$StaffAssignment)
+          ),
+          column(6,
+            p(strong("Name:"),  c$ContactName2),
+            p(strong("Title:"), c$ContactTitle2),
+            p(strong("Phone:"), c$ContactPhone2),
+            p(strong("Email:"), c$ContactEmail2)
+          )
+        ),
+        hr(),
+        if (!contacts_edit_mode()) {
+          actionButton(ns("contacts_edit_btn"), "Edit", class = "btn-default")
+        } else {
+          wellPanel(
+            textInput(ns("edit_address"), "Address", value = c$Address),
+            fluidRow(
+              column(6,
+                textInput(ns("edit_cname1"),  "Contact 1 Name", value = c$ContactName1),
+                textInput(ns("edit_ctitle1"), "Title",          value = c$ContactTitle1),
+                textInput(ns("edit_cphone1"), "Phone",          value = c$ContactPhone1),
+                textInput(ns("edit_cemail1"), "Email",          value = c$ContactEmail1),
+                selectInput(ns("edit_staff_contact"), "Staff Assignment",
+                            choices  = setNames(staff_opts$ID, staff_opts$Staff),
+                            selected = c$StaffContact)
+              ),
+              column(6,
+                textInput(ns("edit_cname2"),  "Contact 2 Name", value = c$ContactName2),
+                textInput(ns("edit_ctitle2"), "Title",          value = c$ContactTitle2),
+                textInput(ns("edit_cphone2"), "Phone",          value = c$ContactPhone2),
+                textInput(ns("edit_cemail2"), "Email",          value = c$ContactEmail2)
+              )
+            ),
+            actionButton(ns("contacts_save_btn"),   "Save",   class = "btn-success"),
+            actionButton(ns("contacts_cancel_btn"), "Cancel")
+          )
+        }
+      )
+    })
+
+    observeEvent(input$contacts_edit_btn, {
+      contacts_edit_mode(TRUE)
+    })
+
+    observeEvent(input$contacts_save_btn, {
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      update_jurisdiction_contacts(
+        as.integer(id_val),
+        input$edit_address,
+        input$edit_cname1, input$edit_ctitle1, input$edit_cphone1, input$edit_cemail1,
+        input$edit_staff_contact,
+        input$edit_cname2, input$edit_ctitle2, input$edit_cphone2, input$edit_cemail2
+      )
+      contacts_trigger(contacts_trigger() + 1)
+      contacts_edit_mode(FALSE)
+    })
+
+    observeEvent(input$contacts_cancel_btn, {
+      contacts_edit_mode(FALSE)
+    })
+
     output$selected_detail <- renderUI({
       id_val <- input$org_select
       if (is.null(id_val) || id_val == "") return(NULL)
@@ -176,7 +266,7 @@ organizationsServer <- function(id) {
             DT::DTOutput(ns("materials_table")),
             uiOutput(ns("material_edit_form"))
           ),
-          tabPanel("Contacts"),
+          tabPanel("Contacts", uiOutput(ns("contacts_panel"))),
           tabPanel("Actions"),
           tabPanel("Correspondence"),
           tabPanel("Notes")
