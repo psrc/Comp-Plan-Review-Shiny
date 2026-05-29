@@ -1,7 +1,14 @@
 # ui.R - User interface definition
 
 navbarPage(
-  title = "Plan Review Tracking",
+  title = tags$span(
+    tags$img(
+      src = "RegionalGem2016.png",
+      height = "30px",
+      style = "margin-right: 8px; vertical-align: middle;"
+    ),
+    "Plan Review Tracking"
+  ),
   
   # Custom CSS for active tab styling
   header = tags$head(
@@ -9,8 +16,18 @@ navbarPage(
       .navbar-default .navbar-nav > .active > a,
       .navbar-default .navbar-nav > .active > a:hover,
       .navbar-default .navbar-nav > .active > a:focus {
-        background-color: #D2A679 !important;
+        background-color: #BCBEC0 !important;
         color: #333333 !important;
+      }
+      .btn.btn-active {
+        background-color: #8CC63E !important;
+        border-color: #74a833 !important;
+        color: #ffffff !important;
+      }
+      .btn.btn-active:hover, .btn.btn-active:focus {
+        background-color: #74a833 !important;
+        border-color: #5e8a29 !important;
+        color: #ffffff !important;
       }
       .file-path {
         font-family: Consolas, 'Courier New', monospace;

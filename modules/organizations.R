@@ -8,12 +8,12 @@ organizationsUI <- function(id) {
     shinyjs::useShinyjs(),
 
     # Page heading
-    h2("Plan Review Tracking"),
+    #h2("Plan Review Tracking"),
 
-    h3(textOutput(ns("jurisdiction_txt"))),
-    br(),
-    actionButton(ns("jurisdiction_btn"), "Jurisdictions", class = "btn-primary"),
-    actionButton(ns("centers_btn"), "Centers and CPPs", class = "btn-primary"),
+    actionButton(ns("jurisdiction_btn"), "Jurisdictions",
+                 style = "background-color:#3F6618;border-color:#2e4a11;color:#ffffff;"),
+    actionButton(ns("centers_btn"), "Centers and CPPs",
+                 style = "background-color:#3F6618;border-color:#2e4a11;color:#ffffff;"),
     br(), br(),
     selectInput(ns("org_select"), label = NULL, choices = character(0),
                 selectize = FALSE, width = "200px"),
@@ -30,50 +30,33 @@ organizationsServer <- function(id) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Reactive value to track which button was last clicked
-    active_source <- reactiveVal(NULL)
-
     # Store the current data reactively
     current_data <- reactiveVal(data.frame())
 
     # Observe Jurisdictions button click
     observeEvent(input$jurisdiction_btn, {
-      active_source("jurisdictions")
       data <- get_cities_counties()
       current_data(data)
       updateSelectInput(session, "org_select",
                         choices = setNames(data$ID, data$DisplayName))
 
-      shinyjs::removeClass(ns("jurisdiction_btn"), "btn-default")
-      shinyjs::addClass(ns("jurisdiction_btn"), "btn-primary")
-      shinyjs::removeClass(ns("centers_btn"), "btn-primary")
-      shinyjs::addClass(ns("centers_btn"), "btn-default")
+      shinyjs::runjs(paste0(
+        "document.getElementById('", ns("jurisdiction_btn"), "').style.cssText='background-color:#8CC63E;border-color:#74a833;color:#ffffff;';",
+        "document.getElementById('", ns("centers_btn"), "').style.cssText='background-color:#3F6618;border-color:#2e4a11;color:#ffffff;';"
+      ))
     })
 
     # Observe Centers and CPPs button click
     observeEvent(input$centers_btn, {
-      active_source("centers")
       data <- get_centers()
       current_data(data)
       updateSelectInput(session, "org_select",
                         choices = setNames(data$ID, data$DisplayName))
 
-      shinyjs::removeClass(ns("centers_btn"), "btn-default")
-      shinyjs::addClass(ns("centers_btn"), "btn-primary")
-      shinyjs::removeClass(ns("jurisdiction_btn"), "btn-primary")
-      shinyjs::addClass(ns("jurisdiction_btn"), "btn-default")
-    })
-
-    # Create reactive text that appears when button is clicked
-    output$jurisdiction_txt <- renderText({
-      source <- active_source()
-      if (is.null(source)) {
-        ""
-      } else if (source == "jurisdictions") {
-        "Jurisdictions"
-      } else {
-        "Centers and CPPs"
-      }
+      shinyjs::runjs(paste0(
+        "document.getElementById('", ns("centers_btn"), "').style.cssText='background-color:#8CC63E;border-color:#74a833;color:#ffffff;';",
+        "document.getElementById('", ns("jurisdiction_btn"), "').style.cssText='background-color:#3F6618;border-color:#2e4a11;color:#ffffff;';"
+      ))
     })
 
     materials_refresh <- reactiveVal(0)
@@ -409,8 +392,7 @@ organizationsServer <- function(id) {
       if (nrow(data) > 0 && "NotesDate" %in% names(data)) {
         data$NotesDate <- format(as.Date(data$NotesDate), "%m/%d/%Y")
       }
-      cols <- c("NotesDate", "Notes", "StaffName")
-      data <- data[, intersect(cols, names(data)), drop = FALSE]
+      data <- data[, !names(data) %in% c("NotesID", "NotesStaff"), drop = FALSE]
       names(data)[names(data) == "NotesDate"]  <- "Date"
       names(data)[names(data) == "StaffName"]  <- "Staff"
       DT::datatable(data, selection = "single", rownames = FALSE,
@@ -493,7 +475,6 @@ organizationsServer <- function(id) {
       if (nrow(row) == 0) return(NULL)
       tagList(
         h4(row$DisplayName),
-        #p(strong("ID : "), row$ID),
         p(strong("Type: "), row$JurisdictionType),
         tabsetPanel(
           tabPanel("Materials",
