@@ -1,5 +1,13 @@
 # modules/organizations.R - Organizations tab module
 
+hfield <- function(label_text, input_el) {
+  div(style = "display: flex; align-items: flex-start; margin-bottom: 10px;",
+    tags$label(label_text,
+               style = "min-width: 130px; text-align: right; padding-right: 10px; padding-top: 7px; margin-bottom: 0; font-weight: normal; white-space: nowrap;"),
+    div(style = "flex: 1;", input_el)
+  )
+}
+
 # UI function for the Organizations module
 organizationsUI <- function(id) {
   ns <- NS(id)
@@ -11,17 +19,14 @@ organizationsUI <- function(id) {
     #h2("Plan Review Tracking"),
 
     actionButton(ns("jurisdiction_btn"), "Jurisdictions",
-                 style = "background-color:#3F6618;border-color:#2e4a11;color:#ffffff;"),
+                 style = "background-color:#E2F1CF;border-color:#c8ddb0;color:#333333;"),
     actionButton(ns("centers_btn"), "Centers and CPPs",
-                 style = "background-color:#3F6618;border-color:#2e4a11;color:#ffffff;"),
+                 style = "background-color:#E2F1CF;border-color:#c8ddb0;color:#333333;"),
     br(), br(),
     selectInput(ns("org_select"), label = NULL, choices = character(0),
                 selectize = FALSE, width = "200px"),
     br(),
-    div(
-      style = "border: 1px solid #ddd;",
-      uiOutput(ns("selected_detail"))
-    )
+    uiOutput(ns("selected_detail"))
   )
 }
 
@@ -41,8 +46,8 @@ organizationsServer <- function(id) {
                         choices = setNames(data$ID, data$DisplayName))
 
       shinyjs::runjs(paste0(
-        "document.getElementById('", ns("jurisdiction_btn"), "').style.cssText='background-color:#8CC63E;border-color:#74a833;color:#ffffff;';",
-        "document.getElementById('", ns("centers_btn"), "').style.cssText='background-color:#3F6618;border-color:#2e4a11;color:#ffffff;';"
+        "document.getElementById('", ns("jurisdiction_btn"), "').style.cssText='background-color:#C0E095;border-color:#a8cc7a;color:#333333;';",
+        "document.getElementById('", ns("centers_btn"), "').style.cssText='background-color:#E2F1CF;border-color:#c8ddb0;color:#333333;';"
       ))
     })
 
@@ -54,8 +59,8 @@ organizationsServer <- function(id) {
                         choices = setNames(data$ID, data$DisplayName))
 
       shinyjs::runjs(paste0(
-        "document.getElementById('", ns("centers_btn"), "').style.cssText='background-color:#8CC63E;border-color:#74a833;color:#ffffff;';",
-        "document.getElementById('", ns("jurisdiction_btn"), "').style.cssText='background-color:#3F6618;border-color:#2e4a11;color:#ffffff;';"
+        "document.getElementById('", ns("centers_btn"), "').style.cssText='background-color:#C0E095;border-color:#a8cc7a;color:#333333;';",
+        "document.getElementById('", ns("jurisdiction_btn"), "').style.cssText='background-color:#E2F1CF;border-color:#c8ddb0;color:#333333;';"
       ))
     })
 
@@ -467,15 +472,90 @@ organizationsServer <- function(id) {
       DT::selectRows(notes_proxy, NULL)
     })
 
+    details_trigger      <- reactiveVal(0)
+    jurisdictions_lookup <- reactive({ get_all_jurisdictions_lookup() })
+    geography_lookup     <- reactive({ get_geography_lookup() })
+
+    details_data <- reactive({
+      details_trigger()
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      get_jurisdiction_details(as.integer(id_val))
+    })
+
+    observeEvent(input$details_save_btn, {
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      update_jurisdiction_details(
+        as.integer(id_val),
+        input$details_certified,
+        input$details_cert_date,
+        input$details_parent1,
+        input$details_parent2,
+        input$details_geography,
+        input$details_airport
+      )
+      details_trigger(details_trigger() + 1)
+    })
+
     output$selected_detail <- renderUI({
       id_val <- input$org_select
       if (is.null(id_val) || id_val == "") return(NULL)
       data <- current_data()
       row <- data[data$ID == as.integer(id_val), ]
       if (nrow(row) == 0) return(NULL)
+      d       <- details_data()
+      jur_opts <- jurisdictions_lookup()
+      geo_opts <- geography_lookup()
+
       tagList(
-        h4(row$DisplayName),
-        p(strong("Type: "), row$JurisdictionType),
+        if (!is.null(d) && nrow(d) > 0) tagList(
+          fluidRow(
+            tags$div(class = "col-md-4",
+              hfield("Certified",
+                selectInput(ns("details_certified"), label = NULL,
+                            choices  = c("", "Yes", "No", "Conditionally"),
+                            selected = if (!is.na(d$Certified)) d$Certified else ""))
+            ),
+            tags$div(class = "col-md-4",
+              hfield("Certification Date",
+                dateInput(ns("details_cert_date"), label = NULL,
+                          value  = if (!is.na(d$CertificationDate)) as.Date(d$CertificationDate) else NA,
+                          format = "mm/dd/yyyy"))
+            ),
+            tags$div(class = "col-md-4",
+              hfield("Adjacent to Airport",
+                checkboxInput(ns("details_airport"), label = NULL,
+                              value = isTRUE(as.logical(d$AirportAdjacent))))
+            )
+          ),
+          fluidRow(
+            tags$div(class = "col-md-4",
+              hfield("Located In",
+                selectInput(ns("details_parent1"), label = NULL,
+                            choices  = c("(none)" = "", setNames(as.character(jur_opts$ID), jur_opts$DisplayName)),
+                            selected = if (!is.na(d$JurisdictionParent1)) d$JurisdictionParent1 else ""))
+            ),
+            tags$div(class = "col-md-4",
+              hfield("Also In",
+                selectInput(ns("details_parent2"), label = NULL,
+                            choices  = c("(none)" = "", setNames(as.character(jur_opts$ID), jur_opts$DisplayName)),
+                            selected = if (!is.na(d$JurisdictionParent2)) d$JurisdictionParent2 else ""))
+            ),
+            tags$div(class = "col-md-4",
+              hfield("Regional Geography",
+                selectInput(ns("details_geography"), label = NULL,
+                            choices  = c("(none)" = "", setNames(as.character(geo_opts$ID), geo_opts$RegionalGeography)),
+                            selected = if (!is.na(d$RegionalGeography)) d$RegionalGeography else ""))
+            )
+          ),
+          fluidRow(
+            column(12,
+              actionButton(ns("details_save_btn"), "Save", class = "btn-success")
+            )
+          ),
+          hr()
+        ),
         tabsetPanel(
           tabPanel("Materials",
             fluidRow(

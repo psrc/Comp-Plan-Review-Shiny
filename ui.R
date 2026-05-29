@@ -20,7 +20,7 @@ navbarPage(
         color: #333333 !important;
       }
       .btn.btn-active {
-        background-color: #8CC63E !important;
+        background-color: #C0E095 !important;
         border-color: #74a833 !important;
         color: #ffffff !important;
       }
@@ -28,6 +28,25 @@ navbarPage(
         background-color: #74a833 !important;
         border-color: #5e8a29 !important;
         color: #ffffff !important;
+      }
+      table.dataTable tbody tr.selected td,
+      table.dataTable tbody tr.selected {
+        background-color: #C0E095 !important;
+        color: #333333 !important;
+        box-shadow: inset 0 0 0 9999px #C0E095 !important;
+      }
+      .nav-tabs > li > a {
+        color: #91268F !important;
+      }
+      .btn-danger, .btn-danger:hover, .btn-danger:focus, .btn-danger:active {
+        background-color: #EBA9BE !important;
+        border-color: #d98eaa !important;
+        color: #333333 !important;
+      }
+      .btn-success, .btn-success:hover, .btn-success:focus, .btn-success:active {
+        background-color: #E2F1CF !important;
+        border-color: #c8ddb0 !important;
+        color: #333333 !important;
       }
       .file-path {
         font-family: Consolas, 'Courier New', monospace;

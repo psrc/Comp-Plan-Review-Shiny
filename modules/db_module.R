@@ -440,6 +440,89 @@ delete_note <- function(note_id) {
   })
 }
 
+get_jurisdiction_details <- function(jurisdiction_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(NULL)
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT j.Certified, j.CertificationDate,
+              j.JurisdictionParent1, p1.DisplayName AS Parent1Name,
+              j.JurisdictionParent2, p2.DisplayName AS Parent2Name,
+              j.RegionalGeography, g.RegionalGeography AS GeographyName,
+              j.AirportAdjacent
+       FROM dbo.Jurisdiction j
+       LEFT JOIN dbo.Jurisdiction p1 ON j.JurisdictionParent1 = p1.ID
+       LEFT JOIN dbo.Jurisdiction p2 ON j.JurisdictionParent2 = p2.ID
+       LEFT JOIN dbo.JurisdictionGeography g ON j.RegionalGeography = g.ID
+       WHERE j.ID = ?",
+      params = list(as.integer(jurisdiction_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Query failed in get_jurisdiction_details():", e$message))
+    return(NULL)
+  })
+}
+
+get_all_jurisdictions_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), DisplayName = character()))
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT ID, DisplayName FROM dbo.Jurisdiction ORDER BY DisplayName")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), DisplayName = character()))
+  })
+}
+
+get_geography_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), RegionalGeography = character()))
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT ID, RegionalGeography FROM dbo.JurisdictionGeography ORDER BY RegionalGeography")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), RegionalGeography = character()))
+  })
+}
+
+update_jurisdiction_details <- function(jurisdiction_id, certified, certification_date,
+                                         parent1, parent2, regional_geography,
+                                         airport_adjacent) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "UPDATE dbo.Jurisdiction
+       SET Certified = ?, CertificationDate = ?,
+           JurisdictionParent1 = ?, JurisdictionParent2 = ?,
+           RegionalGeography = ?, AirportAdjacent = ?
+       WHERE ID = ?",
+      params = list(
+        if (certified == "") NA else certified,
+        if (is.na(certification_date)) NA else as.character(certification_date),
+        if (is.null(parent1) || parent1 == "") NA else as.integer(parent1),
+        if (is.null(parent2) || parent2 == "") NA else as.integer(parent2),
+        if (is.null(regional_geography) || regional_geography == "") NA else as.integer(regional_geography),
+        as.integer(airport_adjacent),
+        as.integer(jurisdiction_id)
+      ))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Update failed in update_jurisdiction_details():", e$message))
+    return(FALSE)
+  })
+}
+
 # Function to test database connection
 test_db_connection <- function() {
   con <- get_db_connection()
