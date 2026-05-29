@@ -286,6 +286,84 @@ delete_action <- function(action_id) {
   })
 }
 
+get_correspondence <- function(jurisdiction_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame())
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT ID, CorrespondenceDate, CorrespondenceDescription, CorrespondenceFile
+       FROM dbo.Correspondence WHERE Jurisdiction = ?
+       ORDER BY CorrespondenceDate DESC",
+      params = list(as.integer(jurisdiction_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Query failed in get_correspondence():", e$message))
+    return(data.frame())
+  })
+}
+
+insert_correspondence <- function(jurisdiction_id, correspondence_date,
+                                   correspondence_desc, correspondence_file) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "INSERT INTO dbo.Correspondence
+         (Jurisdiction, CorrespondenceDate, CorrespondenceDescription, CorrespondenceFile)
+       VALUES (?, ?, ?, ?)",
+      params = list(as.integer(jurisdiction_id),
+                    if (is.na(correspondence_date)) NA else as.character(correspondence_date),
+                    if (correspondence_desc == "") NA else correspondence_desc,
+                    if (correspondence_file == "") NA else correspondence_file))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Insert failed in insert_correspondence():", e$message))
+    return(FALSE)
+  })
+}
+
+update_correspondence <- function(correspondence_id, correspondence_date,
+                                   correspondence_desc, correspondence_file) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "UPDATE dbo.Correspondence
+       SET CorrespondenceDate = ?, CorrespondenceDescription = ?, CorrespondenceFile = ?
+       WHERE ID = ?",
+      params = list(if (is.na(correspondence_date)) NA else as.character(correspondence_date),
+                    if (correspondence_desc == "") NA else correspondence_desc,
+                    if (correspondence_file == "") NA else correspondence_file,
+                    as.integer(correspondence_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Update failed in update_correspondence():", e$message))
+    return(FALSE)
+  })
+}
+
+delete_correspondence <- function(correspondence_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "DELETE FROM dbo.Correspondence WHERE ID = ?",
+      params = list(as.integer(correspondence_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Delete failed in delete_correspondence():", e$message))
+    return(FALSE)
+  })
+}
+
 # Function to test database connection
 test_db_connection <- function() {
   con <- get_db_connection()

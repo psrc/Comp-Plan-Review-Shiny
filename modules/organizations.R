@@ -301,6 +301,99 @@ organizationsServer <- function(id) {
       DT::selectRows(actions_proxy, NULL)
     })
 
+    correspondence_trigger <- reactiveVal(0)
+    correspondence_proxy   <- DT::dataTableProxy("correspondence_table", session = session)
+
+    correspondence_data <- reactive({
+      correspondence_trigger()
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      get_correspondence(as.integer(id_val))
+    })
+
+    output$correspondence_table <- DT::renderDT({
+      data <- correspondence_data()
+      if (nrow(data) > 0 && "CorrespondenceDate" %in% names(data)) {
+        data$CorrespondenceDate <- format(as.Date(data$CorrespondenceDate), "%m/%d/%Y")
+      }
+      if (nrow(data) > 0) {
+        data$CorrespondenceDescription <- paste0(
+          ifelse(is.na(data$CorrespondenceDescription), "", data$CorrespondenceDescription),
+          ifelse(is.na(data$CorrespondenceFile) | data$CorrespondenceFile == "", "",
+                 paste0("<br><span class='file-path'>", data$CorrespondenceFile, "</span>"))
+        )
+      }
+      cols <- c("CorrespondenceDate", "CorrespondenceDescription")
+      data <- data[, intersect(cols, names(data)), drop = FALSE]
+      names(data)[names(data) == "CorrespondenceDate"]        <- "Date"
+      names(data)[names(data) == "CorrespondenceDescription"] <- "Correspondence/File Path"
+      DT::datatable(data, selection = "single", rownames = FALSE, escape = FALSE,
+                    options = list(dom = "t", paging = FALSE,
+                                   scrollY = "300px", scrollCollapse = TRUE,
+                                   autoWidth = TRUE,
+                                   columnDefs = list(list(width = "110px", targets = 0))))
+    })
+
+    output$correspondence_form <- renderUI({
+      idx  <- input$correspondence_table_rows_selected
+      data <- correspondence_data()
+      has_selection <- !is.null(idx) && length(idx) > 0 && nrow(data) >= idx
+
+      if (has_selection) {
+        row      <- data[idx, ]
+        date_val <- if (!is.na(row$CorrespondenceDate)) as.Date(row$CorrespondenceDate) else Sys.Date()
+        desc_val <- if (!is.na(row$CorrespondenceDescription)) row$CorrespondenceDescription else ""
+        file_val <- if (!is.na(row$CorrespondenceFile)) row$CorrespondenceFile else ""
+        header   <- "Edit Selected Correspondence"
+      } else {
+        date_val <- Sys.Date()
+        desc_val <- ""
+        file_val <- ""
+        header   <- "New Correspondence"
+      }
+
+      wellPanel(
+        strong(header),
+        br(), br(),
+        dateInput(ns("correspondence_date"), "Date",          value = date_val),
+        textAreaInput(ns("correspondence_desc"), "Description", value = desc_val, rows = 3),
+        textInput(ns("correspondence_file"),  "File/URL",    value = file_val),
+        actionButton(ns("correspondence_save_btn"), "Save", class = "btn-success"),
+        if (has_selection) actionButton(ns("correspondence_delete_btn"), "Delete", class = "btn-danger"),
+        if (has_selection) actionButton(ns("correspondence_clear_btn"),  "Clear")
+      )
+    })
+
+    observeEvent(input$correspondence_save_btn, {
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      idx <- input$correspondence_table_rows_selected
+
+      if (!is.null(idx) && length(idx) > 0) {
+        corr_id <- correspondence_data()$ID[idx]
+        update_correspondence(corr_id, input$correspondence_date,
+                              input$correspondence_desc, input$correspondence_file)
+      } else {
+        insert_correspondence(as.integer(id_val), input$correspondence_date,
+                              input$correspondence_desc, input$correspondence_file)
+      }
+      correspondence_trigger(correspondence_trigger() + 1)
+      DT::selectRows(correspondence_proxy, NULL)
+    })
+
+    observeEvent(input$correspondence_delete_btn, {
+      idx <- input$correspondence_table_rows_selected
+      req(idx)
+      corr_id <- correspondence_data()$ID[idx]
+      delete_correspondence(corr_id)
+      correspondence_trigger(correspondence_trigger() + 1)
+      DT::selectRows(correspondence_proxy, NULL)
+    })
+
+    observeEvent(input$correspondence_clear_btn, {
+      DT::selectRows(correspondence_proxy, NULL)
+    })
+
     output$selected_detail <- renderUI({
       id_val <- input$org_select
       if (is.null(id_val) || id_val == "") return(NULL)
@@ -325,7 +418,12 @@ organizationsServer <- function(id) {
               column(5, uiOutput(ns("actions_form")))
             )
           ),
-          tabPanel("Correspondence"),
+          tabPanel("Correspondence",
+            fluidRow(
+              column(7, DT::DTOutput(ns("correspondence_table"))),
+              column(5, uiOutput(ns("correspondence_form")))
+            )
+          ),
           tabPanel("Notes")
         )
       )
