@@ -222,6 +222,91 @@ organizationsServer <- function(id) {
       contacts_trigger(contacts_trigger() + 1)
     })
 
+    actions_trigger <- reactiveVal(0)
+    actions_proxy   <- DT::dataTableProxy("actions_table", session = session)
+
+    actions_data <- reactive({
+      actions_trigger()
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      get_actions(as.integer(id_val))
+    })
+
+    output$actions_table <- DT::renderDT({
+      data <- actions_data()
+      if (nrow(data) > 0 && "ActionsDate" %in% names(data)) {
+        data$ActionsDate <- format(as.Date(data$ActionsDate), "%m/%d/%Y")
+      }
+      cols <- c("ActionsDate", "Actions", "ActionsFile")
+      data <- data[, intersect(cols, names(data)), drop = FALSE]
+      names(data)[names(data) == "ActionsDate"]  <- "Date"
+      names(data)[names(data) == "Actions"]      <- "Action"
+      names(data)[names(data) == "ActionsFile"]  <- "File Location"
+      DT::datatable(data, selection = "single", rownames = FALSE,
+                    options = list(dom = "t", paging = FALSE,
+                                   scrollY = "300px", scrollCollapse = TRUE,
+                                   autoWidth = TRUE,
+                                   columnDefs = list(list(width = "110px", targets = 0))))
+    })
+
+    output$actions_form <- renderUI({
+      idx  <- input$actions_table_rows_selected
+      data <- actions_data()
+      has_selection <- !is.null(idx) && length(idx) > 0 && nrow(data) >= idx
+
+      if (has_selection) {
+        row      <- data[idx, ]
+        date_val <- if (!is.na(row$ActionsDate)) as.Date(row$ActionsDate) else Sys.Date()
+        text_val <- if (!is.na(row$Actions))     row$Actions     else ""
+        file_val <- if (!is.na(row$ActionsFile)) row$ActionsFile else ""
+        header   <- "Edit Selected Action"
+      } else {
+        date_val <- Sys.Date()
+        text_val <- ""
+        file_val <- ""
+        header   <- "New Action"
+      }
+
+      wellPanel(
+        strong(header),
+        br(), br(),
+        dateInput(ns("action_date"),  "Date",     value = date_val),
+        textAreaInput(ns("action_text"),  "Action",   value = text_val, rows = 3),
+        textInput(ns("action_file"),  "File/URL", value = file_val),
+        actionButton(ns("actions_save_btn"), "Save", class = "btn-success"),
+        if (has_selection) actionButton(ns("actions_delete_btn"), "Delete", class = "btn-danger"),
+        if (has_selection) actionButton(ns("actions_clear_btn"),  "Clear")
+      )
+    })
+
+    observeEvent(input$actions_save_btn, {
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      idx <- input$actions_table_rows_selected
+
+      if (!is.null(idx) && length(idx) > 0) {
+        action_id <- actions_data()$ID[idx]
+        update_action(action_id, input$action_date, input$action_text, input$action_file)
+      } else {
+        insert_action(as.integer(id_val), input$action_date, input$action_text, input$action_file)
+      }
+      actions_trigger(actions_trigger() + 1)
+      DT::selectRows(actions_proxy, NULL)
+    })
+
+    observeEvent(input$actions_delete_btn, {
+      idx <- input$actions_table_rows_selected
+      req(idx)
+      action_id <- actions_data()$ID[idx]
+      delete_action(action_id)
+      actions_trigger(actions_trigger() + 1)
+      DT::selectRows(actions_proxy, NULL)
+    })
+
+    observeEvent(input$actions_clear_btn, {
+      DT::selectRows(actions_proxy, NULL)
+    })
+
     output$selected_detail <- renderUI({
       id_val <- input$org_select
       if (is.null(id_val) || id_val == "") return(NULL)
@@ -238,7 +323,10 @@ organizationsServer <- function(id) {
             uiOutput(ns("material_edit_form"))
           ),
           tabPanel("Contacts", uiOutput(ns("contacts_panel"))),
-          tabPanel("Actions"),
+          tabPanel("Actions",
+            DT::DTOutput(ns("actions_table")),
+            uiOutput(ns("actions_form"))
+          ),
           tabPanel("Correspondence"),
           tabPanel("Notes")
         )

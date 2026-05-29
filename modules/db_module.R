@@ -212,6 +212,80 @@ update_jurisdiction_contacts <- function(jurisdiction_id, address,
   })
 }
 
+get_actions <- function(jurisdiction_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame())
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT ID, ActionsDate, [Actions], ActionsFile
+       FROM dbo.Actions WHERE Jurisdiction = ?
+       ORDER BY ActionsDate DESC",
+      params = list(as.integer(jurisdiction_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Query failed in get_actions():", e$message))
+    return(data.frame())
+  })
+}
+
+insert_action <- function(jurisdiction_id, actions_date, actions, actions_file) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "INSERT INTO dbo.Actions (Jurisdiction, ActionsDate, [Actions], ActionsFile)
+       VALUES (?, ?, ?, ?)",
+      params = list(as.integer(jurisdiction_id),
+                    if (is.na(actions_date)) NA else as.character(actions_date),
+                    if (actions == "") NA else actions,
+                    if (actions_file == "") NA else actions_file))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Insert failed in insert_action():", e$message))
+    return(FALSE)
+  })
+}
+
+update_action <- function(action_id, actions_date, actions, actions_file) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "UPDATE dbo.Actions SET ActionsDate = ?, [Actions] = ?, ActionsFile = ?
+       WHERE ID = ?",
+      params = list(if (is.na(actions_date)) NA else as.character(actions_date),
+                    if (actions == "") NA else actions,
+                    if (actions_file == "") NA else actions_file,
+                    as.integer(action_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Update failed in update_action():", e$message))
+    return(FALSE)
+  })
+}
+
+delete_action <- function(action_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "DELETE FROM dbo.Actions WHERE ID = ?",
+      params = list(as.integer(action_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Delete failed in delete_action():", e$message))
+    return(FALSE)
+  })
+}
+
 # Function to test database connection
 test_db_connection <- function() {
   con <- get_db_connection()
