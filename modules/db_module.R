@@ -364,6 +364,82 @@ delete_correspondence <- function(correspondence_id) {
   })
 }
 
+get_notes <- function(jurisdiction_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame())
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT n.NotesID, n.NotesDate, n.Notes, n.NotesStaff, s.Staff AS StaffName
+       FROM dbo.Notes n
+       LEFT JOIN dbo.Staff s ON n.NotesStaff = s.ID
+       WHERE n.Jurisdiction = ?
+       ORDER BY n.NotesDate DESC",
+      params = list(as.integer(jurisdiction_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Query failed in get_notes():", e$message))
+    return(data.frame())
+  })
+}
+
+insert_note <- function(jurisdiction_id, notes_date, notes, notes_staff) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "INSERT INTO dbo.Notes (Jurisdiction, NotesDate, Notes, NotesStaff)
+       VALUES (?, ?, ?, ?)",
+      params = list(as.integer(jurisdiction_id),
+                    if (is.na(notes_date)) NA else as.character(notes_date),
+                    if (notes == "") NA else notes,
+                    as.integer(notes_staff)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Insert failed in insert_note():", e$message))
+    return(FALSE)
+  })
+}
+
+update_note <- function(note_id, notes_date, notes, notes_staff) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "UPDATE dbo.Notes SET NotesDate = ?, Notes = ?, NotesStaff = ?
+       WHERE NotesID = ?",
+      params = list(if (is.na(notes_date)) NA else as.character(notes_date),
+                    if (notes == "") NA else notes,
+                    as.integer(notes_staff),
+                    as.integer(note_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Update failed in update_note():", e$message))
+    return(FALSE)
+  })
+}
+
+delete_note <- function(note_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    dbExecute(con,
+      "DELETE FROM dbo.Notes WHERE NotesID = ?",
+      params = list(as.integer(note_id)))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Delete failed in delete_note():", e$message))
+    return(FALSE)
+  })
+}
+
 # Function to test database connection
 test_db_connection <- function() {
   con <- get_db_connection()

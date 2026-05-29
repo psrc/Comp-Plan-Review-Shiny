@@ -394,6 +394,97 @@ organizationsServer <- function(id) {
       DT::selectRows(correspondence_proxy, NULL)
     })
 
+    notes_trigger <- reactiveVal(0)
+    notes_proxy   <- DT::dataTableProxy("notes_table", session = session)
+
+    notes_data <- reactive({
+      notes_trigger()
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      get_notes(as.integer(id_val))
+    })
+
+    output$notes_table <- DT::renderDT({
+      data <- notes_data()
+      if (nrow(data) > 0 && "NotesDate" %in% names(data)) {
+        data$NotesDate <- format(as.Date(data$NotesDate), "%m/%d/%Y")
+      }
+      cols <- c("NotesDate", "Notes", "StaffName")
+      data <- data[, intersect(cols, names(data)), drop = FALSE]
+      names(data)[names(data) == "NotesDate"]  <- "Date"
+      names(data)[names(data) == "StaffName"]  <- "Staff"
+      DT::datatable(data, selection = "single", rownames = FALSE,
+                    options = list(dom = "t", paging = FALSE,
+                                   scrollY = "300px", scrollCollapse = TRUE,
+                                   autoWidth = TRUE,
+                                   columnDefs = list(
+                                     list(width = "110px", targets = 0),
+                                     list(width = "75%",   targets = 1),
+                                     list(width = "15%",   targets = 2)
+                                   )))
+    })
+
+    output$notes_form <- renderUI({
+      idx  <- input$notes_table_rows_selected
+      data <- notes_data()
+      has_selection <- !is.null(idx) && length(idx) > 0 && nrow(data) >= idx
+      staff_opts <- get_staff_lookup()
+
+      if (has_selection) {
+        row      <- data[idx, ]
+        date_val <- if (!is.na(row$NotesDate)) as.Date(row$NotesDate) else Sys.Date()
+        note_val <- if (!is.na(row$Notes))     row$Notes     else ""
+        staff_sel <- row$NotesStaff
+        header   <- "Edit Selected Note"
+      } else {
+        date_val  <- Sys.Date()
+        note_val  <- ""
+        staff_sel <- NULL
+        header    <- "New Note"
+      }
+
+      wellPanel(
+        strong(header),
+        br(), br(),
+        dateInput(ns("note_date"),  "Date",  value = date_val),
+        textAreaInput(ns("note_text"),  "Note",  value = note_val, rows = 5),
+        selectInput(ns("note_staff"), "Staff",
+                    choices  = setNames(staff_opts$ID, staff_opts$Staff),
+                    selected = staff_sel),
+        actionButton(ns("notes_save_btn"), "Save", class = "btn-success"),
+        if (has_selection) actionButton(ns("notes_delete_btn"), "Delete", class = "btn-danger"),
+        if (has_selection) actionButton(ns("notes_clear_btn"),  "Clear")
+      )
+    })
+
+    observeEvent(input$notes_save_btn, {
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      idx <- input$notes_table_rows_selected
+
+      if (!is.null(idx) && length(idx) > 0) {
+        note_id <- notes_data()$NotesID[idx]
+        update_note(note_id, input$note_date, input$note_text, input$note_staff)
+      } else {
+        insert_note(as.integer(id_val), input$note_date, input$note_text, input$note_staff)
+      }
+      notes_trigger(notes_trigger() + 1)
+      DT::selectRows(notes_proxy, NULL)
+    })
+
+    observeEvent(input$notes_delete_btn, {
+      idx <- input$notes_table_rows_selected
+      req(idx)
+      note_id <- notes_data()$NotesID[idx]
+      delete_note(note_id)
+      notes_trigger(notes_trigger() + 1)
+      DT::selectRows(notes_proxy, NULL)
+    })
+
+    observeEvent(input$notes_clear_btn, {
+      DT::selectRows(notes_proxy, NULL)
+    })
+
     output$selected_detail <- renderUI({
       id_val <- input$org_select
       if (is.null(id_val) || id_val == "") return(NULL)
@@ -402,7 +493,7 @@ organizationsServer <- function(id) {
       if (nrow(row) == 0) return(NULL)
       tagList(
         h4(row$DisplayName),
-        p(strong("ID: "), row$ID),
+        #p(strong("ID : "), row$ID),
         p(strong("Type: "), row$JurisdictionType),
         tabsetPanel(
           tabPanel("Materials",
@@ -424,7 +515,12 @@ organizationsServer <- function(id) {
               column(5, uiOutput(ns("correspondence_form")))
             )
           ),
-          tabPanel("Notes")
+          tabPanel("Notes",
+            fluidRow(
+              column(7, DT::DTOutput(ns("notes_table"))),
+              column(5, uiOutput(ns("notes_form")))
+            )
+          )
         )
       )
     })
