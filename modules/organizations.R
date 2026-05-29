@@ -10,29 +10,17 @@ organizationsUI <- function(id) {
     # Page heading
     h2("Plan Review Tracking"),
 
-    # Output text that will appear when button is clicked
     h3(textOutput(ns("jurisdiction_txt"))),
     br(),
-
-    # Buttons to trigger the database queries
-    div(
-      style = "display: inline-block;",
-      actionButton(ns("jurisdiction_btn"), "Jurisdictions", class = "btn-primary"),
-      actionButton(ns("centers_btn"), "Centers and CPPs", class = "btn-primary")
-    ),
+    actionButton(ns("jurisdiction_btn"), "Jurisdictions", class = "btn-primary"),
+    actionButton(ns("centers_btn"), "Centers and CPPs", class = "btn-primary"),
     br(), br(),
-
-    fluidRow(
-      column(3,
-        selectInput(ns("org_select"), label = NULL, choices = character(0),
-                    selectize = FALSE, width = "100%")
-      ),
-      column(9,
-        div(
-          style = "border: 1px solid #ddd;",
-          uiOutput(ns("selected_detail"))
-        )
-      )
+    selectInput(ns("org_select"), label = NULL, choices = character(0),
+                selectize = FALSE, width = "200px"),
+    br(),
+    div(
+      style = "border: 1px solid #ddd;",
+      uiOutput(ns("selected_detail"))
     )
   )
 }
