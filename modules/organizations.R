@@ -161,12 +161,7 @@ organizationsServer <- function(id) {
       DT::selectRows(materials_proxy, NULL)
     })
 
-    contacts_trigger   <- reactiveVal(0)
-    contacts_edit_mode <- reactiveVal(FALSE)
-
-    observeEvent(input$org_select, {
-      contacts_edit_mode(FALSE)
-    }, ignoreNULL = TRUE, ignoreInit = TRUE)
+    contacts_trigger <- reactiveVal(0)
 
     contacts_data <- reactive({
       contacts_trigger()
@@ -182,60 +177,31 @@ organizationsServer <- function(id) {
       staff_opts    <- get_staff_lookup()
       commerce_opts <- get_commerce_lookup()
 
-      tagList(
-        p(strong("Address:"), c$Address),
-        br(),
+      wellPanel(
+        textInput(ns("edit_address"), "Address", value = c$Address),
         fluidRow(
           column(6,
-            p(strong("Name:"),             c$ContactName1),
-            p(strong("Title:"),            c$ContactTitle1),
-            p(strong("Phone:"),            c$ContactPhone1),
-            p(strong("Email:"),            c$ContactEmail1),
-            p(strong("Staff Assignment:"), c$StaffAssignment)
+            textInput(ns("edit_cname1"),  "Contact 1 Name", value = c$ContactName1),
+            textInput(ns("edit_ctitle1"), "Title",          value = c$ContactTitle1),
+            textInput(ns("edit_cphone1"), "Phone",          value = c$ContactPhone1),
+            textInput(ns("edit_cemail1"), "Email",          value = c$ContactEmail1),
+            selectInput(ns("edit_staff_contact"), "Staff Assignment",
+                        choices  = setNames(staff_opts$ID, staff_opts$Staff),
+                        selected = c$StaffContact)
           ),
           column(6,
-            p(strong("Name:"),                c$ContactName2),
-            p(strong("Title:"),               c$ContactTitle2),
-            p(strong("Phone:"),               c$ContactPhone2),
-            p(strong("Email:"),               c$ContactEmail2),
-            p(strong("Commerce Assignment:"), c$CommerceAssignment)
+            textInput(ns("edit_cname2"),  "Contact 2 Name", value = c$ContactName2),
+            textInput(ns("edit_ctitle2"), "Title",          value = c$ContactTitle2),
+            textInput(ns("edit_cphone2"), "Phone",          value = c$ContactPhone2),
+            textInput(ns("edit_cemail2"), "Email",          value = c$ContactEmail2),
+            selectInput(ns("edit_commerce_contact"), "Commerce Assignment",
+                        choices  = setNames(commerce_opts$ID, commerce_opts$CommerceContact),
+                        selected = c$CommerceContact)
           )
         ),
-        hr(),
-        if (!contacts_edit_mode()) {
-          actionButton(ns("contacts_edit_btn"), "Edit", class = "btn-default")
-        } else {
-          wellPanel(
-            textInput(ns("edit_address"), "Address", value = c$Address),
-            fluidRow(
-              column(6,
-                textInput(ns("edit_cname1"),  "Contact 1 Name", value = c$ContactName1),
-                textInput(ns("edit_ctitle1"), "Title",          value = c$ContactTitle1),
-                textInput(ns("edit_cphone1"), "Phone",          value = c$ContactPhone1),
-                textInput(ns("edit_cemail1"), "Email",          value = c$ContactEmail1),
-                selectInput(ns("edit_staff_contact"), "Staff Assignment",
-                            choices  = setNames(staff_opts$ID, staff_opts$Staff),
-                            selected = c$StaffContact)
-              ),
-              column(6,
-                textInput(ns("edit_cname2"),  "Contact 2 Name", value = c$ContactName2),
-                textInput(ns("edit_ctitle2"), "Title",          value = c$ContactTitle2),
-                textInput(ns("edit_cphone2"), "Phone",          value = c$ContactPhone2),
-                textInput(ns("edit_cemail2"), "Email",          value = c$ContactEmail2),
-                selectInput(ns("edit_commerce_contact"), "Commerce Assignment",
-                            choices  = setNames(commerce_opts$ID, commerce_opts$CommerceContact),
-                            selected = c$CommerceContact)
-              )
-            ),
-            actionButton(ns("contacts_save_btn"),   "Save",   class = "btn-success"),
-            actionButton(ns("contacts_cancel_btn"), "Cancel")
-          )
-        }
+        actionButton(ns("contacts_save_btn"),   "Save",   class = "btn-success"),
+        actionButton(ns("contacts_cancel_btn"), "Cancel")
       )
-    })
-
-    observeEvent(input$contacts_edit_btn, {
-      contacts_edit_mode(TRUE)
     })
 
     observeEvent(input$contacts_save_btn, {
@@ -250,11 +216,10 @@ organizationsServer <- function(id) {
         input$edit_commerce_contact
       )
       contacts_trigger(contacts_trigger() + 1)
-      contacts_edit_mode(FALSE)
     })
 
     observeEvent(input$contacts_cancel_btn, {
-      contacts_edit_mode(FALSE)
+      contacts_trigger(contacts_trigger() + 1)
     })
 
     output$selected_detail <- renderUI({
