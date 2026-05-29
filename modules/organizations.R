@@ -179,7 +179,8 @@ organizationsServer <- function(id) {
       c <- contacts_data()
       if (is.null(c) || nrow(c) == 0) return(NULL)
       c[is.na(c)] <- ""
-      staff_opts <- get_staff_lookup()
+      staff_opts    <- get_staff_lookup()
+      commerce_opts <- get_commerce_lookup()
 
       tagList(
         p(strong("Address:"), c$Address),
@@ -193,10 +194,11 @@ organizationsServer <- function(id) {
             p(strong("Staff Assignment:"), c$StaffAssignment)
           ),
           column(6,
-            p(strong("Name:"),  c$ContactName2),
-            p(strong("Title:"), c$ContactTitle2),
-            p(strong("Phone:"), c$ContactPhone2),
-            p(strong("Email:"), c$ContactEmail2)
+            p(strong("Name:"),                c$ContactName2),
+            p(strong("Title:"),               c$ContactTitle2),
+            p(strong("Phone:"),               c$ContactPhone2),
+            p(strong("Email:"),               c$ContactEmail2),
+            p(strong("Commerce Assignment:"), c$CommerceAssignment)
           )
         ),
         hr(),
@@ -219,7 +221,10 @@ organizationsServer <- function(id) {
                 textInput(ns("edit_cname2"),  "Contact 2 Name", value = c$ContactName2),
                 textInput(ns("edit_ctitle2"), "Title",          value = c$ContactTitle2),
                 textInput(ns("edit_cphone2"), "Phone",          value = c$ContactPhone2),
-                textInput(ns("edit_cemail2"), "Email",          value = c$ContactEmail2)
+                textInput(ns("edit_cemail2"), "Email",          value = c$ContactEmail2),
+                selectInput(ns("edit_commerce_contact"), "Commerce Assignment",
+                            choices  = setNames(commerce_opts$ID, commerce_opts$CommerceContact),
+                            selected = c$CommerceContact)
               )
             ),
             actionButton(ns("contacts_save_btn"),   "Save",   class = "btn-success"),
@@ -241,7 +246,8 @@ organizationsServer <- function(id) {
         input$edit_address,
         input$edit_cname1, input$edit_ctitle1, input$edit_cphone1, input$edit_cemail1,
         input$edit_staff_contact,
-        input$edit_cname2, input$edit_ctitle2, input$edit_cphone2, input$edit_cemail2
+        input$edit_cname2, input$edit_ctitle2, input$edit_cphone2, input$edit_cemail2,
+        input$edit_commerce_contact
       )
       contacts_trigger(contacts_trigger() + 1)
       contacts_edit_mode(FALSE)

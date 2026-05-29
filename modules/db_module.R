@@ -98,6 +98,19 @@ get_status_lookup <- function() {
   })
 }
 
+get_commerce_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), CommerceContact = character()))
+  tryCatch({
+    result <- dbGetQuery(con, "SELECT ID, CommerceContact FROM dbo.CommerceContact")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), CommerceContact = character()))
+  })
+}
+
 get_staff_lookup <- function() {
   con <- get_db_connection()
   if (is.null(con)) return(data.frame(ID = integer(), Staff = character()))
@@ -149,9 +162,11 @@ get_jurisdiction_contacts <- function(jurisdiction_id) {
     result <- dbGetQuery(con,
       "SELECT j.Address, j.ContactName1, j.ContactTitle1, j.ContactPhone1, j.ContactEmail1,
               j.ContactName2, j.ContactTitle2, j.ContactPhone2, j.ContactEmail2,
-              j.StaffContact, s.Staff AS StaffAssignment
+              j.StaffContact, s.Staff AS StaffAssignment,
+              j.CommerceContact, cc.CommerceContact AS CommerceAssignment
        FROM dbo.Jurisdiction j
        LEFT JOIN dbo.Staff s ON j.StaffContact = s.ID
+       LEFT JOIN dbo.CommerceContact cc ON j.CommerceContact = cc.ID
        WHERE j.ID = ?",
       params = list(as.integer(jurisdiction_id)))
     dbDisconnect(con)
@@ -168,7 +183,8 @@ update_jurisdiction_contacts <- function(jurisdiction_id, address,
                                           contact_phone1, contact_email1,
                                           staff_contact,
                                           contact_name2, contact_title2,
-                                          contact_phone2, contact_email2) {
+                                          contact_phone2, contact_email2,
+                                          commerce_contact) {
   con <- get_db_connection()
   if (is.null(con)) return(FALSE)
   tryCatch({
@@ -178,12 +194,14 @@ update_jurisdiction_contacts <- function(jurisdiction_id, address,
            ContactPhone1 = ?, ContactEmail1 = ?,
            StaffContact = ?,
            ContactName2 = ?, ContactTitle2 = ?,
-           ContactPhone2 = ?, ContactEmail2 = ?
+           ContactPhone2 = ?, ContactEmail2 = ?,
+           CommerceContact = ?
        WHERE ID = ?",
       params = list(address,
                     contact_name1, contact_title1, contact_phone1, contact_email1,
                     as.integer(staff_contact),
                     contact_name2, contact_title2, contact_phone2, contact_email2,
+                    as.integer(commerce_contact),
                     as.integer(jurisdiction_id)))
     dbDisconnect(con)
     return(TRUE)
