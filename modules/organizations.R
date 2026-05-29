@@ -91,7 +91,7 @@ organizationsServer <- function(id) {
       cols <- c("MaterialDateReceived", "MaterialTitle", "Status", "Staff_Reviewer", "ID")
       data <- data[, intersect(cols, names(data)), drop = FALSE]
       if ("MaterialDateReceived" %in% names(data)) {
-        data$MaterialDateReceived <- format(as.Date(data$MaterialDateReceived), "%Y-%m-%d")
+        data$MaterialDateReceived <- format(as.Date(data$MaterialDateReceived), "%m/%d/%Y")
       }
       names(data)[names(data) == "MaterialDateReceived"] <- "Received"
       names(data)[names(data) == "MaterialTitle"]        <- "Title"
@@ -225,12 +225,18 @@ organizationsServer <- function(id) {
       if (nrow(data) > 0 && "ActionsDate" %in% names(data)) {
         data$ActionsDate <- format(as.Date(data$ActionsDate), "%m/%d/%Y")
       }
-      cols <- c("ActionsDate", "Actions", "ActionsFile")
+      if (nrow(data) > 0) {
+        data$Actions <- paste0(
+          ifelse(is.na(data$Actions), "", data$Actions),
+          ifelse(is.na(data$ActionsFile) | data$ActionsFile == "", "",
+                 paste0("<br><span class='file-path'>", data$ActionsFile, "</span>"))
+        )
+      }
+      cols <- c("ActionsDate", "Actions")
       data <- data[, intersect(cols, names(data)), drop = FALSE]
-      names(data)[names(data) == "ActionsDate"]  <- "Date"
-      names(data)[names(data) == "Actions"]      <- "Action"
-      names(data)[names(data) == "ActionsFile"]  <- "File Location"
-      DT::datatable(data, selection = "single", rownames = FALSE,
+      names(data)[names(data) == "ActionsDate"] <- "Date"
+      names(data)[names(data) == "Actions"]     <- "Action/File Path"
+      DT::datatable(data, selection = "single", rownames = FALSE, escape = FALSE,
                     options = list(dom = "t", paging = FALSE,
                                    scrollY = "300px", scrollCollapse = TRUE,
                                    autoWidth = TRUE,
@@ -307,13 +313,17 @@ organizationsServer <- function(id) {
         p(strong("Type: "), row$JurisdictionType),
         tabsetPanel(
           tabPanel("Materials",
-            DT::DTOutput(ns("materials_table")),
-            uiOutput(ns("material_edit_form"))
+            fluidRow(
+              column(7, DT::DTOutput(ns("materials_table"))),
+              column(5, uiOutput(ns("material_edit_form")))
+            )
           ),
           tabPanel("Contacts", uiOutput(ns("contacts_panel"))),
           tabPanel("Actions",
-            DT::DTOutput(ns("actions_table")),
-            uiOutput(ns("actions_form"))
+            fluidRow(
+              column(7, DT::DTOutput(ns("actions_table"))),
+              column(5, uiOutput(ns("actions_form")))
+            )
           ),
           tabPanel("Correspondence"),
           tabPanel("Notes")

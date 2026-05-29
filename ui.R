@@ -12,6 +12,13 @@ navbarPage(
         background-color: #D2A679 !important;
         color: #333333 !important;
       }
+      .file-path {
+        font-family: Consolas, 'Courier New', monospace;
+        background-color: #f0f4f8 !important;
+        padding: 1px 4px;
+        border-radius: 2px;
+        font-size: 0.85em;
+      }
     "))
   ),
   
