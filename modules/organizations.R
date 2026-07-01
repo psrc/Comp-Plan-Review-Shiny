@@ -74,8 +74,18 @@ organizationsServer <- function(id) {
       get_materials(as.integer(id_val))
     })
 
+    selected_org_name <- reactive({
+      id_val <- input$org_select
+      req(id_val, id_val != "")
+      data <- current_data()
+      row  <- data[data$ID == as.integer(id_val), ]
+      if (nrow(row) == 0) return(NULL)
+      row$DisplayName
+    })
+
     output$materials_table <- DT::renderDT({
       data <- materials_data()
+      jurisdiction_name <- selected_org_name()
       cols <- c("MaterialDateReceived", "MaterialTitle", "Status", "Staff_Reviewer", "ID")
       data <- data[, intersect(cols, names(data)), drop = FALSE]
       if ("MaterialDateReceived" %in% names(data)) {
@@ -84,9 +94,24 @@ organizationsServer <- function(id) {
       names(data)[names(data) == "MaterialDateReceived"] <- "Received"
       names(data)[names(data) == "MaterialTitle"]        <- "Title"
       names(data)[names(data) == "Staff_Reviewer"]       <- "Staff Reviewer"
-      DT::datatable(data, selection = "single", rownames = FALSE,
-                    options = list(dom = "t", paging = FALSE))
+
+      data$View <- vapply(seq_len(nrow(data)), function(i) {
+        href <- paste0(
+          "?view=material&material_id=", data$ID[i],
+          "&jurisdiction=", utils::URLencode(if (is.null(jurisdiction_name)) "" else jurisdiction_name, reserved = TRUE)
+        )
+        as.character(
+          tags$a(href = href, target = "_blank", title = "Open in new tab",
+                 fontawesome::fa("up-right-from-square", height = "1em"))
+        )
+      }, character(1))
+      names(data)[names(data) == "View"] <- ""
+
+      DT::datatable(data, selection = "single", rownames = FALSE, escape = -ncol(data),
+                    options = list(dom = "t", paging = FALSE,
+                                   columnDefs = list(list(width = "30px", targets = ncol(data) - 1))))
     })
+
 
     output$material_edit_form <- renderUI({
       idx <- input$materials_table_rows_selected

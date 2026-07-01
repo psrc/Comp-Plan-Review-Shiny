@@ -85,6 +85,23 @@ get_materials <- function(org_id) {
   })
 }
 
+get_material_by_id <- function(material_id) {
+  con <- get_db_connection()
+  if (is.null(con)) {
+    return(data.frame(Error = "Database connection failed. Please check your connection settings."))
+  }
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT * FROM dbo.vwMaterials WHERE ID = ?",
+      params = list(as.integer(material_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(Error = paste("Query failed in get_material_by_id():", e$message)))
+  })
+}
+
 get_status_lookup <- function() {
   con <- get_db_connection()
   if (is.null(con)) return(data.frame(ID = integer(), Status = character()))
