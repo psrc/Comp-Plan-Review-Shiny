@@ -102,6 +102,85 @@ get_material_by_id <- function(material_id) {
   })
 }
 
+get_material_edit_data <- function(material_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(NULL)
+  tryCatch({
+    result <- dbGetQuery(con,
+      "SELECT MaterialTitle, MaterialDescription, MaterialFile, MaterialDateReceived,
+              MaterialStatus, MaterialPhase, MaterialSource, MaterialStaffReviewer,
+              MaterialTypeCFP, MaterialTypeCPP, MaterialTypeEconomicDevelopment, MaterialTypeFLUM,
+              MaterialTypeFunctionalPlan, MaterialTypeHousing, MaterialTypeLandUse,
+              MaterialTypeMinorAmendments, MaterialTypeOther, MaterialTypeParks,
+              MaterialTypePeriodicUpdate, MaterialTypeRegionalCenter, MaterialTypeRural,
+              MaterialTypeScopingNotice, MaterialTypeSMP, MaterialTypeSubareaPlan,
+              MaterialTypeTransportation, MaterialTypeUGAChange, MaterialTypeUtilities
+       FROM dbo.Materials WHERE ID = ?",
+      params = list(as.integer(material_id)))
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(NULL)
+  })
+}
+
+get_material_phase_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), Phase = character()))
+  tryCatch({
+    result <- dbGetQuery(con, "SELECT ID, Phase FROM dbo.MaterialsPhase")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), Phase = character()))
+  })
+}
+
+get_material_source_lookup <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return(data.frame(ID = integer(), Source = character()))
+  tryCatch({
+    result <- dbGetQuery(con, "SELECT ID, Source FROM dbo.MaterialsSource")
+    dbDisconnect(con)
+    return(result)
+  }, error = function(e) {
+    dbDisconnect(con)
+    return(data.frame(ID = integer(), Source = character()))
+  })
+}
+
+update_material_detail <- function(material_id, title, description, file, date_received,
+                                    status_id, phase_id, source_id, staff_id, type_values) {
+  con <- get_db_connection()
+  if (is.null(con)) return(FALSE)
+  tryCatch({
+    type_cols <- names(type_values)
+    type_set  <- paste(sprintf("[%s] = ?", type_cols), collapse = ", ")
+    dbExecute(con,
+      sprintf(
+        "UPDATE dbo.Materials
+         SET MaterialTitle = ?, MaterialDescription = ?, MaterialFile = ?, MaterialDateReceived = ?,
+             MaterialStatus = ?, MaterialPhase = ?, MaterialSource = ?, MaterialStaffReviewer = ?,
+             %s
+         WHERE ID = ?", type_set),
+      params = c(
+        list(title, description, file, as.character(date_received),
+             as.integer(status_id), as.integer(phase_id),
+             as.integer(source_id), as.integer(staff_id)),
+        as.list(as.logical(type_values)),
+        list(as.integer(material_id))
+      ))
+    dbDisconnect(con)
+    return(TRUE)
+  }, error = function(e) {
+    dbDisconnect(con)
+    warning(paste("Update failed in update_material_detail():", e$message))
+    return(FALSE)
+  })
+}
+
 get_status_lookup <- function() {
   con <- get_db_connection()
   if (is.null(con)) return(data.frame(ID = integer(), Status = character()))
