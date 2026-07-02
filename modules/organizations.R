@@ -110,7 +110,7 @@ organizationsServer <- function(id) {
       DT::datatable(data, selection = "single", rownames = FALSE, escape = -ncol(data),
                     options = list(dom = "t", paging = FALSE,
                                    columnDefs = list(list(width = "30px", targets = ncol(data) - 1))))
-    })
+    }, server = FALSE)
 
 
     output$material_edit_form <- renderUI({
